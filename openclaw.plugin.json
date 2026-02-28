@@ -1,0 +1,138 @@
+{
+  "id": "memory-md-index",
+  "kind": "memory",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "rootDir": {
+        "type": "string"
+      },
+      "retrieve": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "backend": {
+            "type": "string",
+            "enum": ["rg", "bm25", "vector"]
+          },
+          "topK": {
+            "type": "number"
+          },
+          "maxChars": {
+            "type": "number"
+          },
+          "rerank": {
+            "type": "boolean"
+          },
+          "includePaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "excludePaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rgCommand": {
+            "type": "string"
+          },
+          "vectorCommand": {
+            "type": "string"
+          }
+        }
+      },
+      "route": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "fallbackCrossDomainDocs": {
+            "type": "number"
+          },
+          "denyTags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "writeback": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "sessionStateFile": {
+            "type": "string"
+          },
+          "midDir": {
+            "type": "string"
+          },
+          "maxEntryChars": {
+            "type": "number"
+          },
+          "qualityGate": {
+            "type": "string",
+            "enum": ["off", "basic", "strict"]
+          },
+          "proposalsEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "maintenance": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "intervalMinutes": {
+            "type": "number"
+          },
+          "archiveAfterDays": {
+            "type": "number"
+          },
+          "dedupe": {
+            "type": "boolean"
+          },
+          "weeklyEnabled": {
+            "type": "boolean"
+          },
+          "weeklyWeekday": {
+            "type": "number"
+          }
+        }
+      },
+      "lifecycle": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "promoteThreshold": {
+            "type": "number"
+          },
+          "archiveThreshold": {
+            "type": "number"
+          },
+          "archiveInactiveDays": {
+            "type": "number"
+          }
+        }
+      },
+      "debug": {
+        "type": "boolean"
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "@openclaw/memory-md-index",
+  "version": "2026.2.23",
+  "description": "OpenClaw markdown memory plugin with pluggable retrieval backends",
+  "type": "module",
+  "license": "MIT",
+  "peerDependencies": {
+    "openclaw": ">=2026.1.26"
+  },
+  "devDependencies": {
+    "openclaw": "^2026.2.23"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
