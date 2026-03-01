@@ -129,6 +129,66 @@ describe("MarkdownMemoryStore", () => {
     expect(docs[0]?.metadata.tags).toEqual([]);
   });
 
+  it("infers layer from directory path: long/→L2, short/→L0, mid/→L1", async () => {
+    const store = new MarkdownMemoryStore({
+      workspaceDir,
+      rootDir: "memory",
+      sessionStateFile: "short/session_state.md",
+    });
+
+    // Create files in each directory without frontmatter
+    await fs.mkdir(path.join(workspaceDir, "memory/long"), { recursive: true });
+    await fs.mkdir(path.join(workspaceDir, "memory/short"), { recursive: true });
+    await fs.mkdir(path.join(workspaceDir, "memory/mid/general"), { recursive: true });
+    await fs.writeFile(
+      path.join(workspaceDir, "memory/long/rules.md"),
+      "Always use TypeScript strict mode.",
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(workspaceDir, "memory/short/session.md"),
+      "Current session notes.",
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(workspaceDir, "memory/mid/general/notes.md"),
+      "Some notes.",
+      "utf8",
+    );
+
+    const docs = await store.listDocuments({
+      includePaths: ["long", "short", "mid"],
+    });
+
+    const longDoc = docs.find((d) => d.relativePath.startsWith("long/"));
+    const shortDoc = docs.find((d) => d.relativePath.startsWith("short/"));
+    const midDoc = docs.find((d) => d.relativePath.startsWith("mid/"));
+
+    expect(longDoc?.metadata?.layer).toBe("L2");
+    expect(shortDoc?.metadata?.layer).toBe("L0");
+    expect(midDoc?.metadata?.layer).toBe("L1");
+  });
+
+  it("frontmatter layer overrides path-based inference", async () => {
+    const store = new MarkdownMemoryStore({
+      workspaceDir,
+      rootDir: "memory",
+      sessionStateFile: "short/session_state.md",
+    });
+
+    await fs.mkdir(path.join(workspaceDir, "memory/long"), { recursive: true });
+    // File in long/ but with explicit L1 frontmatter
+    await fs.writeFile(
+      path.join(workspaceDir, "memory/long/override.md"),
+      "---\nlayer: \"L1\"\n---\n\nThis long/ file explicitly sets L1.",
+      "utf8",
+    );
+
+    const docs = await store.listDocuments({ includePaths: ["long"] });
+    const doc = docs.find((d) => d.relativePath === "long/override.md");
+    expect(doc?.metadata?.layer).toBe("L1");
+  });
+
   it("appends proposals into memory/proposals for manual review", async () => {
     const store = new MarkdownMemoryStore({
       workspaceDir,

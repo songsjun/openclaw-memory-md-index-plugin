@@ -132,6 +132,17 @@ function buildStableEntryId(entry: MidEntryWrite, domain: string): string {
   return `mem_${day}_${hash}`;
 }
 
+function inferLayerFromPath(relativePath: string): "L0" | "L1" | "L2" {
+  const firstSegment = relativePath.split("/")[0];
+  if (firstSegment === "long") {
+    return "L2";
+  }
+  if (firstSegment === "short") {
+    return "L0";
+  }
+  return "L1";
+}
+
 function metadataDefaults(relativePath: string): MemoryDocumentMetadata {
   const segments = relativePath.split("/");
   const domain = segments[0] === "mid" ? sanitizeDomain(segments[1]) : "general";
@@ -154,7 +165,7 @@ function metadataDefaults(relativePath: string): MemoryDocumentMetadata {
     failCount: 0,
     lastUsedAt: null,
     ttlDays: 30,
-    layer: "L1",
+    layer: inferLayerFromPath(relativePath),
   };
 }
 

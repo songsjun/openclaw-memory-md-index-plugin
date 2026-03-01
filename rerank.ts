@@ -31,6 +31,11 @@ function normalizeLexicalScores(hits: MemorySearchHit[]): Map<string, number> {
 }
 
 function calculateRecencyScore(metadata: MemoryDocumentMetadata | undefined, now: Date): number {
+  // L2 (long-term rules) are permanent — no time decay
+  if (metadata?.layer === "L2") {
+    return 1.0;
+  }
+
   const fallbackTs = now.toISOString();
   const raw = metadata?.updatedAt ?? metadata?.createdAt ?? fallbackTs;
   const parsed = Date.parse(raw);
