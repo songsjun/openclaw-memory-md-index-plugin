@@ -47,7 +47,7 @@ export type MemoryMdIndexConfig = {
 const DEFAULT_CONFIG: MemoryMdIndexConfig = {
   rootDir: "memory",
   retrieve: {
-    backend: "rg",
+    backend: "bm25",
     topK: 5,
     maxChars: 3200,
     rerank: true,

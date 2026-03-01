@@ -5,7 +5,7 @@ describe("memory-md-index config", () => {
   it("returns defaults when config is omitted", () => {
     const cfg = memoryMdIndexConfigSchema.parse(undefined);
     expect(cfg).toEqual(getDefaultMemoryMdIndexConfig());
-    expect(cfg.retrieve.backend).toBe("rg");
+    expect(cfg.retrieve.backend).toBe("bm25");
     expect(cfg.retrieve.topK).toBe(5);
     expect(cfg.retrieve.rerank).toBe(true);
     expect(cfg.route.enabled).toBe(true);
@@ -84,6 +84,13 @@ describe("memory-md-index config", () => {
     expect(cfg.lifecycle.archiveThreshold).toBe(0.2);
     expect(cfg.lifecycle.archiveInactiveDays).toBe(45);
     expect(cfg.debug).toBe(true);
+  });
+
+  it("explicit rg backend config overrides bm25 default", () => {
+    const cfg = memoryMdIndexConfigSchema.parse({
+      retrieve: { backend: "rg" },
+    });
+    expect(cfg.retrieve.backend).toBe("rg");
   });
 
   it("rejects unknown backend", () => {
