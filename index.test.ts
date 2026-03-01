@@ -195,4 +195,101 @@ describe("memory-md-index plugin hook wiring", () => {
       await fs.rm(routeWorkspace, { recursive: true, force: true });
     }
   });
+
+  it("tracks lifecycle events for priority-injected long docs", async () => {
+    const priorityWorkspace = await fs.mkdtemp(
+      path.join(os.tmpdir(), "openclaw-memory-md-index-priority-events-"),
+    );
+    await fs.mkdir(path.join(priorityWorkspace, "memory/long"), { recursive: true });
+    await fs.mkdir(path.join(priorityWorkspace, "memory/mid/programming"), { recursive: true });
+    await fs.writeFile(
+      path.join(priorityWorkspace, "memory/long/rules.md"),
+      "Always keep TypeScript strict mode enabled for repository safety.",
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(priorityWorkspace, "memory/mid/programming/2026-02-28.md"),
+      "Today we enabled TypeScript strict mode in tsconfig.",
+      "utf8",
+    );
+
+    const hookHandlers: Record<string, Array<(event: unknown, ctx: unknown) => Promise<unknown>>> =
+      {};
+    const { api } = createMockApi({
+      hookHandlers,
+      pluginConfig: {
+        rootDir: "memory",
+        retrieve: {
+          backend: "bm25",
+          topK: 3,
+          maxChars: 1200,
+          priorityInjection: true,
+          includePaths: ["long", "mid"],
+          excludePaths: [],
+        },
+        lifecycle: {
+          enabled: true,
+          promoteThreshold: 0.75,
+          archiveThreshold: 0.35,
+          archiveInactiveDays: 30,
+        },
+      },
+    });
+
+    try {
+      await memoryMdIndexPlugin.register(api);
+      const promptHandler = hookHandlers.before_prompt_build?.[0];
+      const endHandler = hookHandlers.agent_end?.[0];
+      expect(promptHandler).toBeDefined();
+      expect(endHandler).toBeDefined();
+
+      const sessionCtx = {
+        workspaceDir: priorityWorkspace,
+        sessionId: "sid-priority-1",
+        agentId: "main",
+      };
+      const promptResult = await promptHandler?.(
+        { prompt: "Enable TypeScript strict mode", messages: [] },
+        sessionCtx,
+      );
+      const prepend = String((promptResult as { prependContext?: string }).prependContext ?? "");
+      expect(prepend).toContain("long/rules.md");
+      expect(prepend).toContain("mid/programming/2026-02-28.md");
+
+      await endHandler?.(
+        {
+          success: true,
+          messages: [
+            { role: "user", content: "Enable strict mode" },
+            { role: "assistant", content: "Done" },
+          ],
+        },
+        sessionCtx,
+      );
+
+      const usagePath = path.join(priorityWorkspace, "memory/meta/usage.jsonl");
+      const usageContent = await fs.readFile(usagePath, "utf8");
+      const events = usageContent
+        .split("\n")
+        .filter((row) => row.trim().length > 0)
+        .map((row) => JSON.parse(row) as { type: string; sessionId?: string; relativePath?: string });
+      const bySession = events.filter((event) => event.sessionId === "sid-priority-1");
+
+      const promptInjectedPaths = new Set(
+        bySession
+          .filter((event) => event.type === "prompt_injected")
+          .map((event) => event.relativePath),
+      );
+      const taskOutcomePaths = new Set(
+        bySession.filter((event) => event.type === "task_outcome").map((event) => event.relativePath),
+      );
+
+      expect(promptInjectedPaths.has("long/rules.md")).toBe(true);
+      expect(promptInjectedPaths.has("mid/programming/2026-02-28.md")).toBe(true);
+      expect(taskOutcomePaths.has("long/rules.md")).toBe(true);
+      expect(taskOutcomePaths.has("mid/programming/2026-02-28.md")).toBe(true);
+    } finally {
+      await fs.rm(priorityWorkspace, { recursive: true, force: true });
+    }
+  });
 });

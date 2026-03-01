@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { getDefaultMemoryMdIndexConfig, memoryMdIndexConfigSchema } from "./config.js";
 
@@ -149,6 +150,17 @@ describe("memory-md-index config", () => {
       retrieve: { priorityInjection: true },
     });
     expect(cfg.retrieve.priorityInjection).toBe(true);
+  });
+
+  it("manifest schema includes retrieve.priorityInjection", async () => {
+    const text = await fs.readFile(new URL("./openclaw.plugin.json", import.meta.url), "utf8");
+    const parsed = JSON.parse(text) as Record<string, unknown>;
+    const configSchema = (parsed.configSchema ?? {}) as Record<string, unknown>;
+    const rootProps = (configSchema.properties ?? {}) as Record<string, unknown>;
+    const retrieve = (rootProps.retrieve ?? {}) as Record<string, unknown>;
+    const retrieveProps = (retrieve.properties ?? {}) as Record<string, unknown>;
+    const priorityInjection = (retrieveProps.priorityInjection ?? {}) as Record<string, unknown>;
+    expect(priorityInjection.type).toBe("boolean");
   });
 
   it("rejects maintenance.weeklyWeekday out of range", () => {

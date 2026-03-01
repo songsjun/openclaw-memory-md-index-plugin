@@ -16,6 +16,21 @@ function resolveWorkspaceDir(value: string | undefined): string {
   return value && value.trim().length > 0 ? value : process.cwd();
 }
 
+function normalizeInjectedSourcePath(source: string): string {
+  return source.trim().replace(/:L\d+$/i, "");
+}
+
+function deriveInjectedPathsFromSources(sources: string[]): string[] {
+  const unique = new Set<string>();
+  for (const source of sources) {
+    const normalized = normalizeInjectedSourcePath(source);
+    if (normalized) {
+      unique.add(normalized);
+    }
+  }
+  return [...unique];
+}
+
 const memoryMdIndexPlugin = {
   id: "memory-md-index",
   name: "Memory (Markdown Index)",
@@ -185,7 +200,7 @@ const memoryMdIndexPlugin = {
       if (cfg.lifecycle.enabled) {
         const ts = new Date().toISOString();
         const sessionId = ctx.sessionId ?? ctx.sessionKey;
-        const injectedPaths = hits.map((hit) => hit.relativePath);
+        const injectedPaths = deriveInjectedPathsFromSources(memoryBlock.sources);
         if (sessionId) {
           sessionInjectedHits.set(sessionId, injectedPaths);
         }

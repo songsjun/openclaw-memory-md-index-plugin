@@ -25,6 +25,9 @@
           "rerank": {
             "type": "boolean"
           },
+          "priorityInjection": {
+            "type": "boolean"
+          },
           "includePaths": {
             "type": "array",
             "items": {
