@@ -137,6 +137,7 @@ class RgMemoryIndex implements MemoryIndex {
       "--color",
       "never",
       "--smart-case",
+      "--fixed-strings",
       "--max-count",
       "4",
       params.query,
