@@ -209,4 +209,157 @@ describe("runMemoryMaintenance", () => {
     expect(consolidated).toContain("## Consolidated Rules");
     expect(consolidated).toContain("Always run tests before merge.");
   });
+
+  it("daily report lists mid entries written today using content timestamps", async () => {
+    const cfg = getDefaultMemoryMdIndexConfig();
+    const store = new MarkdownMemoryStore({
+      workspaceDir,
+      rootDir: cfg.rootDir,
+      sessionStateFile: cfg.writeback.sessionStateFile,
+      midDir: cfg.writeback.midDir,
+    });
+    await store.ensureLayout();
+
+    // Create a mid file with two entries: one from today, one from yesterday
+    const midDir = path.join(workspaceDir, "memory/mid/programming");
+    await fs.mkdir(midDir, { recursive: true });
+    const midContent = [
+      "## [2026-02-28T10:00:00.000Z] Today Decision",
+      "",
+      "---",
+      'id: "mem_today_1"',
+      'title: "Today Decision"',
+      'domain: "programming"',
+      "tags: []",
+      "deny_tags: []",
+      'created_at: "2026-02-28T10:00:00.000Z"',
+      'updated_at: "2026-02-28T10:00:00.000Z"',
+      "source:",
+      '  type: "session"',
+      '  ref: "s1"',
+      "confidence: 0.75",
+      "usage_count: 0",
+      "success_count: 0",
+      "fail_count: 0",
+      "last_used_at: null",
+      "ttl_days: 30",
+      'layer: "L1"',
+      "category: session",
+      "---",
+      "",
+      "content of today's entry",
+      "",
+      "## [2026-02-27T09:00:00.000Z] Yesterday Decision",
+      "",
+      "---",
+      'id: "mem_yesterday_1"',
+      'title: "Yesterday Decision"',
+      'domain: "programming"',
+      "tags: []",
+      "deny_tags: []",
+      'created_at: "2026-02-27T09:00:00.000Z"',
+      'updated_at: "2026-02-27T09:00:00.000Z"',
+      "source:",
+      '  type: "session"',
+      '  ref: "s2"',
+      "confidence: 0.75",
+      "usage_count: 0",
+      "success_count: 0",
+      "fail_count: 0",
+      "last_used_at: null",
+      "ttl_days: 30",
+      'layer: "L1"',
+      "category: session",
+      "---",
+      "",
+      "content of yesterday's entry",
+      "",
+    ].join("\n");
+    await fs.writeFile(path.join(midDir, "2026-02-28.md"), midContent, "utf8");
+
+    const result = await runMemoryMaintenance({
+      store,
+      mode: "daily",
+      config: {
+        ...cfg,
+        maintenance: {
+          ...cfg.maintenance,
+          enabled: true,
+          dedupe: true,
+        },
+      },
+      now: () => new Date("2026-02-28T12:00:00.000Z"),
+    });
+
+    const dailyReport = await fs.readFile(result.dailyReportPath, "utf8");
+    // Should include today's entry
+    expect(dailyReport).toContain("entries_written_today: 1");
+    expect(dailyReport).toContain("## Today's Writebacks");
+    expect(dailyReport).toContain("Today Decision");
+    expect(dailyReport).toContain("[programming]");
+    // Should NOT include yesterday's entry
+    expect(dailyReport).not.toContain("Yesterday Decision");
+  });
+
+  it("daily report shows (none) when no entries written today", async () => {
+    const cfg = getDefaultMemoryMdIndexConfig();
+    const store = new MarkdownMemoryStore({
+      workspaceDir,
+      rootDir: cfg.rootDir,
+      sessionStateFile: cfg.writeback.sessionStateFile,
+      midDir: cfg.writeback.midDir,
+    });
+    await store.ensureLayout();
+
+    // Create a mid file with only yesterday's entry
+    const midDir = path.join(workspaceDir, "memory/mid/general");
+    await fs.mkdir(midDir, { recursive: true });
+    const midContent = [
+      "## [2026-02-27T09:00:00.000Z] Old Entry",
+      "",
+      "---",
+      'id: "mem_old_1"',
+      'title: "Old Entry"',
+      'domain: "general"',
+      "tags: []",
+      "deny_tags: []",
+      'created_at: "2026-02-27T09:00:00.000Z"',
+      'updated_at: "2026-02-27T09:00:00.000Z"',
+      "source:",
+      '  type: "session"',
+      '  ref: "s1"',
+      "confidence: 0.75",
+      "usage_count: 0",
+      "success_count: 0",
+      "fail_count: 0",
+      "last_used_at: null",
+      "ttl_days: 30",
+      'layer: "L1"',
+      "category: session",
+      "---",
+      "",
+      "old content",
+      "",
+    ].join("\n");
+    await fs.writeFile(path.join(midDir, "2026-02-27.md"), midContent, "utf8");
+
+    const result = await runMemoryMaintenance({
+      store,
+      mode: "daily",
+      config: {
+        ...cfg,
+        maintenance: {
+          ...cfg.maintenance,
+          enabled: true,
+          dedupe: true,
+        },
+      },
+      now: () => new Date("2026-02-28T12:00:00.000Z"),
+    });
+
+    const dailyReport = await fs.readFile(result.dailyReportPath, "utf8");
+    expect(dailyReport).toContain("entries_written_today: 0");
+    expect(dailyReport).toContain("- (none)");
+    expect(dailyReport).not.toContain("Old Entry");
+  });
 });

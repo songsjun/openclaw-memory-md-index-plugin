@@ -305,6 +305,27 @@ async function runWeeklyConsolidation(params: {
   };
 }
 
+type TodayEntry = { path: string; title: string; domain: string };
+
+function extractTodayEntriesFromContent(params: {
+  content: string;
+  relativePath: string;
+  todayStr: string;
+}): TodayEntry[] {
+  const entries: TodayEntry[] = [];
+  const segments = params.relativePath.split("/");
+  const domain = segments[1] ?? "general";
+  const matches = [
+    ...params.content.matchAll(/^## \[(\d{4}-\d{2}-\d{2}T[^\]]*)\] (.+)$/gm),
+  ];
+  for (const m of matches) {
+    if (m[1]?.startsWith(params.todayStr)) {
+      entries.push({ path: params.relativePath, title: m[2] ?? "", domain });
+    }
+  }
+  return entries;
+}
+
 async function writeDailyReport(params: {
   layout: MemoryLayoutPaths;
   now: Date;
@@ -312,6 +333,7 @@ async function writeDailyReport(params: {
     MemoryMaintenanceResult,
     "mode" | "dailyReportPath" | "weeklyReportPath" | "weeklyProposalPath"
   >;
+  todayEntries: TodayEntry[];
 }): Promise<string> {
   const day = params.now.toISOString().slice(0, 10);
   const reportPath = path.join(params.layout.reportsDir, `daily_${day}.md`);
@@ -324,6 +346,13 @@ async function writeDailyReport(params: {
     `removed_duplicate_blocks: ${params.result.removedDuplicateBlocks}`,
     `promote_candidates: ${params.result.promoteCandidates}`,
     `archive_candidates: ${params.result.archiveCandidates}`,
+    `entries_written_today: ${params.todayEntries.length}`,
+    "",
+    "## Today's Writebacks",
+    "",
+    ...(params.todayEntries.length > 0
+      ? params.todayEntries.map((e) => `- [${e.domain}] ${e.title} (${e.path})`)
+      : ["- (none)"]),
     "",
   ].join("\n");
   await fs.writeFile(reportPath, body, "utf8");
@@ -414,6 +443,20 @@ export async function runMemoryMaintenance(params: {
     }
   }
 
+  // Collect today's writeback entries using content timestamps (not mtime).
+  // mtime is unreliable because dedupe rewrites files, changing their mtime.
+  const todayStr = now.toISOString().slice(0, 10);
+  const todayEntries: TodayEntry[] = [];
+  const auditMidFiles: string[] = [];
+  await listMarkdownFilesRecursively(layout.midDir, auditMidFiles);
+  for (const filePath of auditMidFiles) {
+    const content = await fs.readFile(filePath, "utf8");
+    const rel = path.relative(layout.rootDir, filePath).split(path.sep).join("/");
+    todayEntries.push(
+      ...extractTodayEntriesFromContent({ content, relativePath: rel, todayStr }),
+    );
+  }
+
   const dailyReportPath = await writeDailyReport({
     layout,
     now,
@@ -426,6 +469,7 @@ export async function runMemoryMaintenance(params: {
       weeklyConsolidatedRules,
       weeklyConflictPairs,
     },
+    todayEntries,
   });
 
   if (params.logger?.info) {
