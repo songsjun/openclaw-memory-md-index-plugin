@@ -6,7 +6,7 @@ import { createMemoryIndexBackend } from "./indexer.js";
 import { appendUsageEvent } from "./lifecycle.js";
 import type { MemoryMaintenanceMode } from "./maintenance.js";
 import { runMemoryMaintenance } from "./maintenance.js";
-import { buildMemoryPromptBlock } from "./prompt.js";
+import { buildMemoryPromptBlock, buildPriorityMemoryPromptBlock } from "./prompt.js";
 import { rerankMemoryHits } from "./rerank.js";
 import { filterDocumentsForRouting, inferRoutingHints } from "./routing.js";
 import { MarkdownMemoryStore } from "./store.js";
@@ -147,11 +147,24 @@ const memoryMdIndexPlugin = {
           });
         }
       }
-      const memoryBlock = buildMemoryPromptBlock({
-        backend: indexBackend.name,
-        hits,
-        maxChars: cfg.retrieve.maxChars,
-      });
+      let memoryBlock: { block: string; sources: string[] } | null;
+      if (cfg.retrieve.priorityInjection) {
+        const longDocs = filtered.filteredDocs
+          .filter((doc) => doc.relativePath.startsWith("long/"))
+          .map((doc) => ({ relativePath: doc.relativePath, content: doc.content }));
+        memoryBlock = buildPriorityMemoryPromptBlock({
+          backend: indexBackend.name,
+          priorityDocs: longDocs,
+          hits,
+          maxChars: cfg.retrieve.maxChars,
+        });
+      } else {
+        memoryBlock = buildMemoryPromptBlock({
+          backend: indexBackend.name,
+          hits,
+          maxChars: cfg.retrieve.maxChars,
+        });
+      }
       if (!memoryBlock) {
         return;
       }

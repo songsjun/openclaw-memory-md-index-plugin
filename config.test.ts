@@ -17,6 +17,7 @@ describe("memory-md-index config", () => {
     expect(cfg.lifecycle.promoteThreshold).toBe(0.75);
     expect(cfg.lifecycle.archiveThreshold).toBe(0.35);
     expect(cfg.lifecycle.archiveInactiveDays).toBe(30);
+    expect(cfg.retrieve.priorityInjection).toBe(false);
     expect(cfg.maintenance.archiveAfterDays).toBe(7);
     expect(cfg.maintenance.dedupe).toBe(true);
     expect(cfg.maintenance.weeklyEnabled).toBe(true);
@@ -141,6 +142,13 @@ describe("memory-md-index config", () => {
         },
       }),
     ).toThrow("lifecycle.promoteThreshold must be between 0 and 1");
+  });
+
+  it("priorityInjection can be explicitly enabled", () => {
+    const cfg = memoryMdIndexConfigSchema.parse({
+      retrieve: { priorityInjection: true },
+    });
+    expect(cfg.retrieve.priorityInjection).toBe(true);
   });
 
   it("rejects maintenance.weeklyWeekday out of range", () => {

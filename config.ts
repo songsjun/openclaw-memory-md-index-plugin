@@ -9,6 +9,7 @@ export type MemoryMdIndexConfig = {
     topK: number;
     maxChars: number;
     rerank: boolean;
+    priorityInjection: boolean;
     includePaths: string[];
     excludePaths: string[];
     rgCommand: string;
@@ -51,6 +52,7 @@ const DEFAULT_CONFIG: MemoryMdIndexConfig = {
     topK: 5,
     maxChars: 3200,
     rerank: true,
+    priorityInjection: false,
     includePaths: ["short", "mid", "long"],
     excludePaths: ["archive", "proposals"],
     rgCommand: "rg",
@@ -172,6 +174,10 @@ function parseRetrieve(value: unknown): MemoryMdIndexConfig["retrieve"] {
       section?.rerank === undefined
         ? DEFAULT_CONFIG.retrieve.rerank
         : asBoolean(section.rerank, "retrieve.rerank"),
+    priorityInjection:
+      section?.priorityInjection === undefined
+        ? DEFAULT_CONFIG.retrieve.priorityInjection
+        : asBoolean(section.priorityInjection, "retrieve.priorityInjection"),
     includePaths:
       section?.includePaths === undefined
         ? [...DEFAULT_CONFIG.retrieve.includePaths]
@@ -346,6 +352,11 @@ export const memoryMdIndexConfigSchema: OpenClawPluginConfigSchema = {
     "retrieve.rerank": {
       label: "Enable Rerank",
       help: "Apply post-retrieval reranking with recency/usage/confidence signals.",
+      advanced: true,
+    },
+    "retrieve.priorityInjection": {
+      label: "Priority Injection",
+      help: "When enabled, long/ documents are always injected into the prompt regardless of query relevance.",
       advanced: true,
     },
     "retrieve.rgCommand": {
